@@ -1,7 +1,12 @@
+import selenium
 import tkinter as tk
-import selenium 
+import time
 import csv
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 class LinkedInScraperApp:
     def __init__(self, master):
@@ -47,7 +52,10 @@ class LinkedInScraperApp:
         job = self.entry_job.get()
         self.result_label.config(text=f"Email: {email}\nPassword: ***\nJob: {job}")
         
-        #badan save kone
+        self.driver = LinkedInScraper.login_linkedin(email, password, job)
+        #badan scrape kone
+       # badan save kone
+        self.driver.quit()
     
     def save_jobs_to_csv(self, jobs):
         with open("linkedin_jobs.csv", "w", newline="", encoding="utf-8") as file:
@@ -55,3 +63,31 @@ class LinkedInScraperApp:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(jobs)
+
+class LinkedInScraper:
+    def __init__(self, driver):
+        self.driver = driver
+        self.wait = WebDriverWait(self.driver, 10)
+    
+    @classmethod
+    def login_linkedin(cls, email, password, job):
+        driver = webdriver.Chrome()
+        driver.get("https://linkedin.com/login")
+        
+        wait = WebDriverWait(driver, 10)
+        email_input = wait.until(EC.presence_of_element_located((By.ID, "username")))
+        email_input.send_keys(email)
+        
+        password_input = driver.find_element(By.ID, "password")
+        password_input.send_keys(password)
+        password_input.send_keys(Keys.RETURN)
+        
+        wait.until(EC.presence_of_element_located((By.ID, "global-nav-search")))
+        print("✅ Logged in successfully!")
+        
+        search_box = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Search']")))
+        search_box.send_keys(job)
+        search_box.send_keys(Keys.RETURN)
+        print(f"🔍 Searching for jobs: {job}")
+        
+        return driver
