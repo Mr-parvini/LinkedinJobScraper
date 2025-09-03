@@ -1,7 +1,7 @@
-import selenium
 import tkinter as tk
-import time
 import csv
+import time
+from tkinter import font
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -53,8 +53,10 @@ class LinkedInScraperApp:
         self.result_label.config(text=f"Email: {email}\nPassword: ***\nJob: {job}")
         
         self.driver = LinkedInScraper.login_linkedin(email, password, job)
-        #badan scrape kone
-       # badan save kone
+        scraper = LinkedInScraper(self.driver)
+        jobs = scraper.scrape_jobs()
+        self.save_jobs_to_csv(jobs)
+        self.result_label.config(text=f"Found {len(jobs)} jobs. Saved to linkedin_jobs.csv")
         self.driver.quit()
     
     def save_jobs_to_csv(self, jobs):
@@ -63,6 +65,7 @@ class LinkedInScraperApp:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(jobs)
+
 
 class LinkedInScraper:
     def __init__(self, driver):
@@ -91,3 +94,44 @@ class LinkedInScraper:
         print(f"🔍 Searching for jobs: {job}")
         
         return driver
+    
+    def scrape_jobs(self):
+        jobs = []
+        self.wait.until(EC.presence_of_element_located((By.CLASS_NAME, "jobs-search-results__list-item")))
+        
+        while len(jobs) < 50:
+            job_cards = self.driver.find_elements(By.CLASS_NAME, "jobs-search-results__list-item")
+            for card in job_cards[len(jobs):50]:
+                try:
+                    title = card.find_element(By.CSS_SELECTOR, "h3").text.strip()
+                except:
+                    title = ""
+                try:
+                    company = card.find_element(By.CSS_SELECTOR, "h4").text.strip()
+                except:
+                    company = ""
+                try:
+                    location = card.find_element(By.CSS_SELECTOR, "span.job-result-card__location").text.strip()
+                except:
+                    location = ""
+                
+                jobs.append({
+                    "Title": title,
+                    "Company": company,
+                    "Location": location
+                })
+                
+                if len(jobs) >= 50:
+                    break
+            
+            self.driver.execute_script("window.scrollBy(0, 1000);")
+            time.sleep(2)
+        
+        print(f"📝 Collected {len(jobs)} jobs.")
+        return jobs
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = LinkedInScraperApp(root)
+    root.mainloop()
